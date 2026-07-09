@@ -26,9 +26,9 @@ const frameVideo = document.querySelector("#frameVideo");
 const frameCanvas = document.querySelector("#frameCanvas");
 const scanDepth = document.querySelector("#scanDepth");
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "2-digit",
+  day: "2-digit",
   year: "numeric"
 });
 
@@ -119,7 +119,7 @@ processVideoButton.addEventListener("click", async () => {
 
   try {
     const result = await extractVideoText(file, scanDepth.value);
-    rawOcrOutput.textContent = result.rawText.trim();
+    rawOcrOutput.textContent = formatExtractedTextForDisplay(result.rawText).trim();
     detectedEntries = dedupeDetectedEntries(parseEntriesFromText(result.rawText));
     renderDetectedEntries();
     addDetectedButton.disabled = detectedEntries.length === 0;
@@ -318,7 +318,7 @@ async function extractVideoText(file, depth) {
       videoStatus.textContent = `Reading frame ${index + 1} of ${times.length}`;
       videoProgress.value = index / times.length;
       await seekVideo(time);
-      drawVideoFrame(context);
+      drawVideoFrame(context, depth);
       const text = await recognizeCanvasText(worker, index, times.length);
       rawText.push(`Frame ${index + 1} (${time.toFixed(1)}s)\n${text}`);
     }
@@ -363,9 +363,9 @@ function sampleTimes(duration, depth) {
   }
 
   const settings = {
-    quick: { step: 1, maxFrames: 45 },
-    thorough: { step: 0.55, maxFrames: 110 },
-    maximum: { step: 0.35, maxFrames: 180 }
+    quick: { step: 0.8, maxFrames: 70 },
+    thorough: { step: 0.38, maxFrames: 180 },
+    maximum: { step: 0.22, maxFrames: 360 }
   };
   const setting = settings[depth] || settings.thorough;
   const primary = collectSampleTimes(duration, setting.step, 0.25);
@@ -403,15 +403,23 @@ function downsampleTimes(times, maxFrames) {
   return Array.from(new Set(sampled));
 }
 
-function drawVideoFrame(context) {
-  const maxWidth = 1100;
-  const scale = Math.min(1, maxWidth / frameVideo.videoWidth);
+function drawVideoFrame(context, depth) {
+  const settings = {
+    quick: { maxWidth: 1300, upscale: 1.15 },
+    thorough: { maxWidth: 1800, upscale: 1.35 },
+    maximum: { maxWidth: 2400, upscale: 1.65 }
+  };
+  const setting = settings[depth] || settings.thorough;
+  const targetWidth = Math.min(setting.maxWidth, frameVideo.videoWidth * setting.upscale);
+  const scale = targetWidth / frameVideo.videoWidth;
   const width = Math.max(1, Math.round(frameVideo.videoWidth * scale));
   const height = Math.max(1, Math.round(frameVideo.videoHeight * scale));
 
   frameCanvas.width = width;
   frameCanvas.height = height;
-  context.filter = "contrast(1.18) saturate(0.9)";
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.filter = "grayscale(1) contrast(1.35) brightness(1.06)";
   context.drawImage(frameVideo, 0, 0, width, height);
   context.filter = "none";
 }
@@ -422,7 +430,7 @@ async function createOcrWorker(progressState) {
   }
 
   try {
-    return await window.Tesseract.createWorker("eng+chi_sim", 1, {
+    const worker = await window.Tesseract.createWorker("eng+chi_sim", 1, {
       logger(message) {
         if (message.status === "recognizing text") {
           const frameProgress = progressState.frameIndex / progressState.frameCount;
@@ -431,6 +439,11 @@ async function createOcrWorker(progressState) {
         }
       }
     });
+    await worker.setParameters({
+      preserve_interword_spaces: "1",
+      tessedit_pageseg_mode: "6"
+    });
+    return worker;
   } catch {
     return null;
   }
@@ -505,6 +518,26 @@ function parseDetectedDate(text) {
   }
 
   return null;
+}
+
+function formatExtractedTextForDisplay(text) {
+  return text
+    .replace(/\b(20\d{2})[./-](\d{1,2})[./-](\d{1,2})\b/g, (_match, year, month, day) => {
+      return formatDetectedDateUS(year, month, day);
+    })
+    .replace(/\b(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/g, (_match, year, month, day) => {
+      return formatDetectedDateUS(year, month, day);
+    });
+}
+
+function formatDetectedDateUS(year, month, day) {
+  const normalized = normalizeDetectedDate(year, month, day);
+
+  if (!normalized) {
+    return `${month}/${day}/${year}`;
+  }
+
+  return formatDate(parseLocalDate(normalized));
 }
 
 function normalizeDetectedDate(year, month, day) {
