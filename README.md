@@ -1,8 +1,10 @@
 # HEYTEA Points Tracker
 
-A simple browser-based tracker for HEYTEA points expiration. Add earned points, record points you use, and see which balances expire next.
+A simple browser-based tracker for HEYTEA points expiration. Add earned points, record points you use, import a screen recording for OCR, and see which balances expire next.
 
 The app is built as a static site for GitHub Pages. There is no build step and no backend.
+
+Video import runs in the browser. The page samples frames from the uploaded recording, sends those frames through Tesseract.js OCR, parses likely date/points rows, and lets you add detected entries to the tracker.
 
 ## Use locally
 

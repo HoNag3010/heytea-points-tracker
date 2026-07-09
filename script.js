@@ -15,6 +15,15 @@ const balanceCount = document.querySelector("#balanceCount");
 const clearAllButton = document.querySelector("#clearAllButton");
 const sampleButton = document.querySelector("#sampleButton");
 const emptyTemplate = document.querySelector("#emptyStateTemplate");
+const videoInput = document.querySelector("#videoInput");
+const processVideoButton = document.querySelector("#processVideoButton");
+const addDetectedButton = document.querySelector("#addDetectedButton");
+const videoStatus = document.querySelector("#videoStatus");
+const videoProgress = document.querySelector("#videoProgress");
+const detectedList = document.querySelector("#detectedList");
+const rawOcrOutput = document.querySelector("#rawOcrOutput");
+const frameVideo = document.querySelector("#frameVideo");
+const frameCanvas = document.querySelector("#frameCanvas");
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -23,6 +32,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 let entries = loadEntries();
+let detectedEntries = [];
 
 dateInput.value = toInputDate(new Date());
 render();
@@ -72,6 +82,67 @@ sampleButton.addEventListener("click", () => {
   ];
   saveEntries();
   render();
+});
+
+videoInput.addEventListener("change", () => {
+  const file = videoInput.files[0];
+  detectedEntries = [];
+  renderDetectedEntries();
+  rawOcrOutput.textContent = "";
+  videoProgress.value = 0;
+  processVideoButton.disabled = !file;
+  addDetectedButton.disabled = true;
+  videoStatus.textContent = file ? file.name : "Ready";
+});
+
+processVideoButton.addEventListener("click", async () => {
+  const file = videoInput.files[0];
+
+  if (!file) {
+    return;
+  }
+
+  if (!window.Tesseract) {
+    videoStatus.textContent = "OCR library unavailable";
+    return;
+  }
+
+  processVideoButton.disabled = true;
+  addDetectedButton.disabled = true;
+  detectedEntries = [];
+  renderDetectedEntries();
+  rawOcrOutput.textContent = "";
+  videoProgress.value = 0;
+
+  try {
+    const result = await extractVideoText(file);
+    rawOcrOutput.textContent = result.rawText.trim();
+    detectedEntries = dedupeDetectedEntries(parseEntriesFromText(result.rawText));
+    renderDetectedEntries();
+    addDetectedButton.disabled = detectedEntries.length === 0;
+    videoStatus.textContent = detectedEntries.length
+      ? `${detectedEntries.length} entries detected`
+      : "No point lines detected";
+  } catch (error) {
+    videoStatus.textContent = "Could not process video";
+    rawOcrOutput.textContent = error instanceof Error ? error.message : String(error);
+  } finally {
+    processVideoButton.disabled = false;
+  }
+});
+
+addDetectedButton.addEventListener("click", () => {
+  if (detectedEntries.length === 0) {
+    return;
+  }
+
+  entries = entries.concat(detectedEntries.map((entry) => ({ ...entry, id: createId() })));
+  detectedEntries = [];
+  saveEntries();
+  render();
+  renderDetectedEntries();
+  addDetectedButton.disabled = true;
+  videoStatus.textContent = "Detected entries added";
 });
 
 function loadEntries() {
@@ -197,6 +268,246 @@ function renderActivity() {
     });
 
     activityList.append(row);
+  }
+}
+
+async function extractVideoText(file) {
+  const objectUrl = URL.createObjectURL(file);
+  const context = frameCanvas.getContext("2d", { willReadFrequently: true });
+  const rawText = [];
+
+  try {
+    await loadVideo(objectUrl);
+    const duration = Number.isFinite(frameVideo.duration) ? frameVideo.duration : 0;
+    const times = sampleTimes(duration);
+
+    if (times.length === 0) {
+      throw new Error("The selected video has no readable duration.");
+    }
+
+    for (let index = 0; index < times.length; index += 1) {
+      const time = times[index];
+      videoStatus.textContent = `Reading frame ${index + 1} of ${times.length}`;
+      videoProgress.value = index / times.length;
+      await seekVideo(time);
+      drawVideoFrame(context);
+      const text = await recognizeCanvasText(index, times.length);
+      rawText.push(`Frame ${index + 1} (${time.toFixed(1)}s)\n${text}`);
+    }
+
+    videoProgress.value = 1;
+    return { rawText: rawText.join("\n\n") };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+    frameVideo.removeAttribute("src");
+    frameVideo.load();
+  }
+}
+
+function loadVideo(objectUrl) {
+  return new Promise((resolve, reject) => {
+    frameVideo.onloadedmetadata = () => resolve();
+    frameVideo.onerror = () => reject(new Error("The browser could not load this video file."));
+    frameVideo.src = objectUrl;
+    frameVideo.load();
+  });
+}
+
+function seekVideo(time) {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error("Timed out while reading the video.")), 8000);
+
+    frameVideo.onseeked = () => {
+      window.clearTimeout(timeout);
+      resolve();
+    };
+
+    frameVideo.currentTime = Math.min(time, Math.max(frameVideo.duration - 0.1, 0));
+  });
+}
+
+function sampleTimes(duration) {
+  if (!duration || duration < 0.5) {
+    return [];
+  }
+
+  const maxFrames = 18;
+  const step = Math.max(1.2, duration / maxFrames);
+  const times = [];
+
+  for (let time = 0.4; time < duration; time += step) {
+    times.push(time);
+  }
+
+  return times.slice(0, maxFrames);
+}
+
+function drawVideoFrame(context) {
+  const maxWidth = 1100;
+  const scale = Math.min(1, maxWidth / frameVideo.videoWidth);
+  const width = Math.max(1, Math.round(frameVideo.videoWidth * scale));
+  const height = Math.max(1, Math.round(frameVideo.videoHeight * scale));
+
+  frameCanvas.width = width;
+  frameCanvas.height = height;
+  context.filter = "contrast(1.18) saturate(0.9)";
+  context.drawImage(frameVideo, 0, 0, width, height);
+  context.filter = "none";
+}
+
+async function recognizeCanvasText(frameIndex, frameCount) {
+  const result = await window.Tesseract.recognize(frameCanvas, "eng+chi_sim", {
+    logger(message) {
+      if (message.status === "recognizing text") {
+        const frameProgress = frameIndex / frameCount;
+        const ocrProgress = message.progress / frameCount;
+        videoProgress.value = Math.min(frameProgress + ocrProgress, 1);
+      }
+    }
+  });
+
+  return result.data.text || "";
+}
+
+function parseEntriesFromText(text) {
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const parsed = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const windowText = lines.slice(Math.max(0, index - 1), Math.min(lines.length, index + 2)).join(" ");
+    const date = parseDetectedDate(windowText);
+    const points = parseDetectedPoints(windowText);
+
+    if (!date || !points) {
+      continue;
+    }
+
+    const kind = detectEntryKind(windowText, points.signed);
+    parsed.push({
+      id: createId(),
+      kind,
+      date,
+      points: Math.abs(points.value),
+      note: `Video OCR: ${lines[index].slice(0, 44)}`
+    });
+  }
+
+  return parsed;
+}
+
+function parseDetectedDate(text) {
+  const numeric = text.match(/\b(20\d{2})[./-](\d{1,2})[./-](\d{1,2})\b/);
+
+  if (numeric) {
+    return normalizeDetectedDate(numeric[1], numeric[2], numeric[3]);
+  }
+
+  const chinese = text.match(/\b(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/);
+
+  if (chinese) {
+    return normalizeDetectedDate(chinese[1], chinese[2], chinese[3]);
+  }
+
+  const slash = text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b/);
+
+  if (slash) {
+    return normalizeDetectedDate(slash[3], slash[1], slash[2]);
+  }
+
+  return null;
+}
+
+function normalizeDetectedDate(year, month, day) {
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+  if (
+    date.getFullYear() !== Number(year) ||
+    date.getMonth() !== Number(month) - 1 ||
+    date.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return toInputDate(date);
+}
+
+function parseDetectedPoints(text) {
+  const matches = Array.from(text.matchAll(/([+-]?)\s*(\d{1,5})\s*(?:points?|pts?|积分|分)?/gi))
+    .map((match) => ({
+      sign: match[1],
+      value: Number.parseInt(match[2], 10),
+      index: match.index || 0
+    }))
+    .filter((match) => Number.isFinite(match.value) && match.value > 0);
+
+  const pointMatch = matches.find((match) => {
+    const nearby = text.slice(match.index, match.index + 18).toLowerCase();
+    return /point|pts|积分|分/.test(nearby) || match.sign;
+  });
+
+  if (!pointMatch) {
+    return null;
+  }
+
+  return {
+    value: pointMatch.value,
+    signed: pointMatch.sign === "-" ? -pointMatch.value : pointMatch.value
+  };
+}
+
+function detectEntryKind(text, signedPoints) {
+  const normalized = text.toLowerCase();
+
+  if (signedPoints < 0 || /used|redeem|spent|consume|使用|兑换|消费|扣除/.test(normalized)) {
+    return "used";
+  }
+
+  if (/expired|过期|失效/.test(normalized)) {
+    return "used";
+  }
+
+  return "earned";
+}
+
+function dedupeDetectedEntries(sourceEntries) {
+  const seen = new Set();
+
+  return sourceEntries.filter((entry) => {
+    const key = `${entry.kind}:${entry.date}:${entry.points}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function renderDetectedEntries() {
+  detectedList.replaceChildren();
+
+  if (detectedEntries.length === 0) {
+    return;
+  }
+
+  for (const entry of detectedEntries) {
+    const row = document.createElement("article");
+    row.className = "detected-row";
+    const sign = entry.kind === "used" ? "-" : "+";
+
+    row.innerHTML = `
+      <div>
+        <strong>${sign}${formatNumber(entry.points)} points</strong>
+        <div class="meta">${formatDate(parseLocalDate(entry.date))} &middot; ${escapeHtml(entry.note)}</div>
+      </div>
+      <span class="status">${entry.kind}</span>
+    `;
+    detectedList.append(row);
   }
 }
 

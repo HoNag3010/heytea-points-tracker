@@ -38,6 +38,32 @@
           </div>
         </section>
 
+        <section class="video-import" aria-labelledby="videoImportTitle">
+          <div class="section-heading">
+            <h2 id="videoImportTitle">Import recording</h2>
+            <span id="videoStatus">Ready</span>
+          </div>
+
+          <div class="video-controls">
+            <label class="file-picker">
+              <input id="videoInput" type="file" accept="video/*">
+              <span>Choose video</span>
+            </label>
+            <button class="secondary-button" id="processVideoButton" type="button" disabled>Extract text</button>
+            <button class="primary-button" id="addDetectedButton" type="button" disabled>Add detected</button>
+          </div>
+
+          <progress id="videoProgress" value="0" max="1"></progress>
+          <div id="detectedList" class="detected-list" aria-live="polite"></div>
+          <details class="ocr-details">
+            <summary>Raw OCR text</summary>
+            <pre id="rawOcrOutput"></pre>
+          </details>
+
+          <video id="frameVideo" muted playsinline preload="metadata"></video>
+          <canvas id="frameCanvas"></canvas>
+        </section>
+
         <form class="entry-form" id="entryForm">
           <div class="segmented-control" role="radiogroup" aria-label="Entry type">
             <label>
@@ -93,6 +119,7 @@
       </div>
     </template>
 
-    <script src="script.js?v=20260709"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="script.js?v=20260709-ocr"></script>
   </body>
 </html>
