@@ -76,14 +76,18 @@ sampleButton.addEventListener("click", () => {
 
 function loadEntries() {
   try {
-    return JSON.parse(localStorage.getItem(storageKey)) || [];
+    return JSON.parse(window.localStorage.getItem(storageKey)) || [];
   } catch {
     return [];
   }
 }
 
 function saveEntries() {
-  localStorage.setItem(storageKey, JSON.stringify(entries));
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(entries));
+  } catch {
+    // The tracker still works for the current page session if storage is blocked.
+  }
 }
 
 function render() {
@@ -226,8 +230,8 @@ function formatNumber(value) {
 }
 
 function createId() {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
   }
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -238,10 +242,10 @@ function sum(values) {
 }
 
 function escapeHtml(value) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
