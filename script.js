@@ -65,13 +65,15 @@ form.addEventListener("submit", (event) => {
 });
 
 clearAllButton.addEventListener("click", () => {
-  if (entries.length === 0) {
+  const hasData = entries.length > 0 || detectedEntries.length > 0 || rawOcrOutput.textContent || videoInput.files.length > 0;
+
+  if (!hasData) {
     return;
   }
 
-  entries = [];
-  saveEntries();
-  render();
+  if (window.confirm("Clear all saved entries, detected OCR rows, and imported video state?")) {
+    clearEverything();
+  }
 });
 
 sampleButton.addEventListener("click", () => {
@@ -160,6 +162,20 @@ function saveEntries() {
   } catch {
     // The tracker still works for the current page session if storage is blocked.
   }
+}
+
+function clearEverything() {
+  entries = [];
+  detectedEntries = [];
+  videoInput.value = "";
+  rawOcrOutput.textContent = "";
+  videoProgress.value = 0;
+  videoStatus.textContent = "Ready";
+  processVideoButton.disabled = true;
+  addDetectedButton.disabled = true;
+  saveEntries();
+  renderDetectedEntries();
+  render();
 }
 
 function render() {
