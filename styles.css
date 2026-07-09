@@ -265,7 +265,7 @@ h3 {
 
 .video-controls {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  grid-template-columns: minmax(12rem, 1fr) minmax(9rem, auto) auto auto;
   gap: 0.75rem;
   align-items: center;
 }
@@ -287,6 +287,28 @@ h3 {
   background: rgba(15, 139, 98, 0.08);
   color: var(--accent-strong);
   font-weight: 900;
+}
+
+.scan-depth {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.scan-depth span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.scan-depth select {
+  min-height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 0.7rem;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
 }
 
 .video-import progress {

@@ -24,6 +24,7 @@ const detectedList = document.querySelector("#detectedList");
 const rawOcrOutput = document.querySelector("#rawOcrOutput");
 const frameVideo = document.querySelector("#frameVideo");
 const frameCanvas = document.querySelector("#frameCanvas");
+const scanDepth = document.querySelector("#scanDepth");
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -115,13 +116,13 @@ processVideoButton.addEventListener("click", async () => {
   videoProgress.value = 0;
 
   try {
-    const result = await extractVideoText(file);
+    const result = await extractVideoText(file, scanDepth.value);
     rawOcrOutput.textContent = result.rawText.trim();
     detectedEntries = dedupeDetectedEntries(parseEntriesFromText(result.rawText));
     renderDetectedEntries();
     addDetectedButton.disabled = detectedEntries.length === 0;
     videoStatus.textContent = detectedEntries.length
-      ? `${detectedEntries.length} entries detected`
+      ? `${detectedEntries.length} entries detected, ${formatSignedTotal(detectedEntries)} net`
       : "No point lines detected";
   } catch (error) {
     videoStatus.textContent = "Could not process video";
@@ -271,7 +272,7 @@ function renderActivity() {
   }
 }
 
-async function extractVideoText(file) {
+async function extractVideoText(file, depth) {
   const objectUrl = URL.createObjectURL(file);
   const context = frameCanvas.getContext("2d", { willReadFrequently: true });
   const rawText = [];
@@ -279,11 +280,13 @@ async function extractVideoText(file) {
   try {
     await loadVideo(objectUrl);
     const duration = Number.isFinite(frameVideo.duration) ? frameVideo.duration : 0;
-    const times = sampleTimes(duration);
+    const times = sampleTimes(duration, depth);
 
     if (times.length === 0) {
       throw new Error("The selected video has no readable duration.");
     }
+
+    rawText.push(`Scan: ${times.length} frames from ${duration.toFixed(1)}s video`);
 
     for (let index = 0; index < times.length; index += 1) {
       const time = times[index];
@@ -326,20 +329,50 @@ function seekVideo(time) {
   });
 }
 
-function sampleTimes(duration) {
+function sampleTimes(duration, depth) {
   if (!duration || duration < 0.5) {
     return [];
   }
 
-  const maxFrames = 18;
-  const step = Math.max(1.2, duration / maxFrames);
+  const settings = {
+    quick: { step: 1, maxFrames: 45 },
+    thorough: { step: 0.55, maxFrames: 110 },
+    maximum: { step: 0.35, maxFrames: 180 }
+  };
+  const setting = settings[depth] || settings.thorough;
+  const primary = collectSampleTimes(duration, setting.step, 0.25);
+  const offset = collectSampleTimes(duration, setting.step, 0.25 + setting.step / 2);
+  const times = primary.concat(offset)
+    .filter((time) => time < duration - 0.05)
+    .sort((a, b) => a - b);
+
+  return downsampleTimes(times, setting.maxFrames);
+}
+
+function collectSampleTimes(duration, step, start) {
   const times = [];
 
-  for (let time = 0.4; time < duration; time += step) {
+  for (let time = start; time < duration; time += step) {
     times.push(time);
   }
 
-  return times.slice(0, maxFrames);
+  return times;
+}
+
+function downsampleTimes(times, maxFrames) {
+  if (times.length <= maxFrames) {
+    return times;
+  }
+
+  const sampled = [];
+  const lastIndex = times.length - 1;
+
+  for (let index = 0; index < maxFrames; index += 1) {
+    const sourceIndex = Math.round((index / (maxFrames - 1)) * lastIndex);
+    sampled.push(times[sourceIndex]);
+  }
+
+  return Array.from(new Set(sampled));
 }
 
 function drawVideoFrame(context) {
@@ -509,6 +542,15 @@ function renderDetectedEntries() {
     `;
     detectedList.append(row);
   }
+}
+
+function formatSignedTotal(sourceEntries) {
+  const total = sourceEntries.reduce((sumTotal, entry) => {
+    return sumTotal + (entry.kind === "used" ? -entry.points : entry.points);
+  }, 0);
+  const sign = total > 0 ? "+" : "";
+
+  return `${sign}${formatNumber(total)}`;
 }
 
 function expirationDate(inputDate) {

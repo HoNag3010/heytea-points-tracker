@@ -49,6 +49,14 @@
               <input id="videoInput" type="file" accept="video/*">
               <span>Choose video</span>
             </label>
+            <label class="scan-depth">
+              <span>Scan depth</span>
+              <select id="scanDepth">
+                <option value="quick">Quick</option>
+                <option value="thorough" selected>Thorough</option>
+                <option value="maximum">Maximum</option>
+              </select>
+            </label>
             <button class="secondary-button" id="processVideoButton" type="button" disabled>Extract text</button>
             <button class="primary-button" id="addDetectedButton" type="button" disabled>Add detected</button>
           </div>
@@ -120,6 +128,6 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="script.js?v=20260709-ocr"></script>
+    <script src="script.js?v=20260709-frames"></script>
   </body>
 </html>
