@@ -1,0 +1,380 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-muted: #eef3ef;
+  --text: #18201b;
+  --muted: #667066;
+  --line: #dfe5dc;
+  --accent: #0f8b62;
+  --accent-strong: #076545;
+  --warning: #b85d17;
+  --danger: #b83232;
+  --shadow: 0 24px 70px rgba(25, 39, 28, 0.14);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    linear-gradient(120deg, rgba(15, 139, 98, 0.12), transparent 32rem),
+    linear-gradient(300deg, rgba(196, 55, 55, 0.11), transparent 28rem),
+    var(--bg);
+  color: var(--text);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 0.65fr);
+  gap: 1.25rem;
+  width: min(72rem, calc(100% - 2rem));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 1.5rem 0;
+  align-items: start;
+}
+
+.tracker,
+.activity-panel {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(223, 229, 220, 0.88);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.tracker {
+  padding: clamp(1rem, 3vw, 1.75rem);
+}
+
+.activity-panel {
+  padding: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.tracker__header,
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: clamp(2rem, 7vw, 4.6rem);
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 1rem;
+}
+
+h3 {
+  margin-bottom: 0.35rem;
+}
+
+.icon-button,
+.text-button,
+.primary-button {
+  border: 0;
+  border-radius: 8px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.summary > div {
+  min-height: 6.5rem;
+  padding: 1rem;
+  background: var(--surface-muted);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.summary__label,
+.field span,
+.section-heading span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.summary strong {
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  line-height: 1;
+}
+
+.entry-form {
+  display: grid;
+  grid-template-columns: 13rem 1fr 1fr;
+  gap: 0.85rem;
+  align-items: end;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 2.75rem;
+  padding: 0.25rem;
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.segmented-control label {
+  min-width: 0;
+}
+
+.segmented-control input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented-control span {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.segmented-control input:checked + span {
+  background: var(--surface);
+  color: var(--accent-strong);
+  box-shadow: 0 6px 18px rgba(30, 45, 35, 0.1);
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field--wide {
+  grid-column: span 2;
+}
+
+.field input {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 0.8rem;
+  background: #fff;
+  color: var(--text);
+}
+
+.field input:focus {
+  outline: 3px solid rgba(15, 139, 98, 0.18);
+  border-color: var(--accent);
+}
+
+.primary-button {
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 900;
+}
+
+.text-button {
+  min-height: 2.25rem;
+  padding: 0 0.7rem;
+  background: var(--surface-muted);
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.expiration-list {
+  margin-top: 1.25rem;
+}
+
+.rows,
+.activity-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.balance-row,
+.activity-row,
+.empty-state {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.balance-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 0.9rem;
+}
+
+.balance-row strong,
+.activity-row strong {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.points {
+  text-align: right;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.status--soon {
+  background: rgba(184, 93, 23, 0.12);
+  color: var(--warning);
+}
+
+.status--expired {
+  background: rgba(184, 50, 50, 0.12);
+  color: var(--danger);
+}
+
+.activity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  padding: 0.8rem;
+}
+
+.activity-row button {
+  align-self: start;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.activity-row--used strong {
+  color: var(--danger);
+}
+
+.empty-state {
+  padding: 1rem;
+  color: var(--muted);
+}
+
+.empty-state p {
+  margin-bottom: 0;
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-panel {
+    position: static;
+  }
+
+  .entry-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .segmented-control,
+  .field--wide,
+  .primary-button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-shell {
+    width: min(100% - 1rem, 72rem);
+    padding: 0.5rem 0;
+  }
+
+  .summary,
+  .entry-form {
+    grid-template-columns: 1fr;
+  }
+
+  .field--wide {
+    grid-column: auto;
+  }
+
+  .balance-row,
+  .activity-row {
+    grid-template-columns: 1fr;
+  }
+
+  .points {
+    text-align: left;
+  }
+}
