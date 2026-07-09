@@ -308,17 +308,21 @@ h3 {
 }
 
 .scan-depth {
-  display: grid;
-  gap: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
 }
 
 .scan-depth span {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .scan-depth select {
+  width: 8.8rem;
   min-height: 2.75rem;
   border: 1px solid var(--line);
   border-radius: 8px;
