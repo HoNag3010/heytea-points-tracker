@@ -107,7 +107,6 @@ h3 {
 
 .icon-button,
 .text-button,
-.danger-button,
 .secondary-button,
 .primary-button {
   border: 0;
@@ -117,12 +116,30 @@ h3 {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  background: var(--surface-muted);
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--muted);
-  font-size: 1.6rem;
+  font-size: 1.45rem;
+  font-weight: 900;
   line-height: 1;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.icon-button:hover {
+  transform: translateY(-1px);
+}
+
+.icon-button--danger {
+  background: rgba(184, 50, 50, 0.08);
+  border-color: rgba(184, 50, 50, 0.18);
+  color: var(--danger);
+}
+
+.icon-button--danger:hover {
+  background: rgba(184, 50, 50, 0.15);
+  border-color: rgba(184, 50, 50, 0.28);
 }
 
 .summary {
@@ -252,16 +269,6 @@ h3 {
   background: var(--surface-muted);
   color: var(--accent-strong);
   font-weight: 800;
-}
-
-.danger-button {
-  min-height: 2.5rem;
-  padding: 0 0.85rem;
-  background: rgba(184, 50, 50, 0.12);
-  color: var(--danger);
-  font-size: 0.88rem;
-  font-weight: 900;
-  white-space: nowrap;
 }
 
 .video-import {

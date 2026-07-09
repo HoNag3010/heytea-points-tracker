@@ -18,7 +18,9 @@
             <p class="eyebrow">HEYTEA points</p>
             <h1>Expiration tracker</h1>
           </div>
-          <button class="danger-button" id="clearAllButton" type="button">Clear everything</button>
+          <button class="icon-button icon-button--danger" id="clearAllButton" type="button" aria-label="Clear everything" title="Clear everything">
+            <span aria-hidden="true">&times;</span>
+          </button>
         </div>
 
         <section class="summary" aria-label="Points summary">
@@ -126,6 +128,6 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="script.js?v=20260709-clear"></script>
+    <script src="script.js?v=20260709-xbutton"></script>
   </body>
 </html>
