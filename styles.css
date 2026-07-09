@@ -285,7 +285,7 @@ h3 {
   display: grid;
   grid-template-columns: minmax(12rem, 1fr) minmax(9rem, auto) auto auto;
   gap: 0.75rem;
-  align-items: center;
+  align-items: end;
 }
 
 .file-picker input {
@@ -308,17 +308,14 @@ h3 {
 }
 
 .scan-depth {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-height: 2.75rem;
+  display: grid;
+  gap: 0.25rem;
 }
 
 .scan-depth span {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
-  white-space: nowrap;
 }
 
 .scan-depth select {
