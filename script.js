@@ -184,7 +184,10 @@ function render() {
   const activeLots = lots.filter((lot) => lot.remaining > 0 && lot.expiresAt >= today);
   const expiredLots = lots.filter((lot) => lot.remaining > 0 && lot.expiresAt < today);
   const activeTotal = sum(activeLots.map((lot) => lot.remaining));
-  const expiredTotal = sum(expiredLots.map((lot) => lot.remaining));
+  const explicitExpiredTotal = sum(entries
+    .filter((entry) => entry.kind === "expired")
+    .map((entry) => entry.points));
+  const expiredTotal = sum(expiredLots.map((lot) => lot.remaining)) + explicitExpiredTotal;
 
   availablePoints.textContent = formatNumber(activeTotal);
   expiredPoints.textContent = formatNumber(expiredTotal);
@@ -208,7 +211,7 @@ function calculateLots(sourceEntries) {
       expiresAt: expirationDate(entry.date)
     }));
 
-  for (const entry of sorted.filter((item) => item.kind === "used")) {
+  for (const entry of sorted.filter((item) => item.kind === "used" || item.kind === "expired")) {
     let pointsToUse = entry.points;
     const usableLots = lots
       .filter((lot) => lot.remaining > 0 && lot.date <= entry.date)
@@ -268,7 +271,7 @@ function renderActivity() {
   for (const entry of sorted) {
     const row = document.createElement("article");
     row.className = `activity-row activity-row--${entry.kind}`;
-    const sign = entry.kind === "used" ? "-" : "+";
+    const sign = entry.kind === "earned" ? "+" : "-";
 
     row.innerHTML = `
       <div>
@@ -292,25 +295,31 @@ async function extractVideoText(file, depth) {
   const objectUrl = URL.createObjectURL(file);
   const context = frameCanvas.getContext("2d", { willReadFrequently: true });
   const rawText = [];
+  const progressState = { frameIndex: 0, frameCount: 1 };
+  let worker = null;
 
   try {
     await loadVideo(objectUrl);
     const duration = Number.isFinite(frameVideo.duration) ? frameVideo.duration : 0;
     const times = sampleTimes(duration, depth);
+    progressState.frameCount = times.length;
 
     if (times.length === 0) {
       throw new Error("The selected video has no readable duration.");
     }
 
     rawText.push(`Scan: ${times.length} frames from ${duration.toFixed(1)}s video`);
+    videoStatus.textContent = `Preparing OCR for ${times.length} frames`;
+    worker = await createOcrWorker(progressState);
 
     for (let index = 0; index < times.length; index += 1) {
       const time = times[index];
+      progressState.frameIndex = index;
       videoStatus.textContent = `Reading frame ${index + 1} of ${times.length}`;
       videoProgress.value = index / times.length;
       await seekVideo(time);
       drawVideoFrame(context);
-      const text = await recognizeCanvasText(index, times.length);
+      const text = await recognizeCanvasText(worker, index, times.length);
       rawText.push(`Frame ${index + 1} (${time.toFixed(1)}s)\n${text}`);
     }
 
@@ -318,6 +327,9 @@ async function extractVideoText(file, depth) {
     return { rawText: rawText.join("\n\n") };
   } finally {
     URL.revokeObjectURL(objectUrl);
+    if (worker) {
+      await worker.terminate();
+    }
     frameVideo.removeAttribute("src");
     frameVideo.load();
   }
@@ -404,7 +416,32 @@ function drawVideoFrame(context) {
   context.filter = "none";
 }
 
-async function recognizeCanvasText(frameIndex, frameCount) {
+async function createOcrWorker(progressState) {
+  if (typeof window.Tesseract.createWorker !== "function") {
+    return null;
+  }
+
+  try {
+    return await window.Tesseract.createWorker("eng+chi_sim", 1, {
+      logger(message) {
+        if (message.status === "recognizing text") {
+          const frameProgress = progressState.frameIndex / progressState.frameCount;
+          const ocrProgress = message.progress / progressState.frameCount;
+          videoProgress.value = Math.min(frameProgress + ocrProgress, 1);
+        }
+      }
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function recognizeCanvasText(worker, frameIndex, frameCount) {
+  if (worker) {
+    const result = await worker.recognize(frameCanvas);
+    return result.data.text || "";
+  }
+
   const result = await window.Tesseract.recognize(frameCanvas, "eng+chi_sim", {
     logger(message) {
       if (message.status === "recognizing text") {
@@ -511,11 +548,11 @@ function parseDetectedPoints(text) {
 function detectEntryKind(text, signedPoints) {
   const normalized = text.toLowerCase();
 
-  if (signedPoints < 0 || /used|redeem|spent|consume|使用|兑换|消费|扣除/.test(normalized)) {
-    return "used";
+  if (/expired|expire|过期|失效|到期/.test(normalized)) {
+    return "expired";
   }
 
-  if (/expired|过期|失效/.test(normalized)) {
+  if (signedPoints < 0 || /used|redeem|spent|consume|使用|兑换|消费|扣除/.test(normalized)) {
     return "used";
   }
 
@@ -547,7 +584,7 @@ function renderDetectedEntries() {
   for (const entry of detectedEntries) {
     const row = document.createElement("article");
     row.className = "detected-row";
-    const sign = entry.kind === "used" ? "-" : "+";
+    const sign = entry.kind === "earned" ? "+" : "-";
 
     row.innerHTML = `
       <div>
@@ -562,7 +599,7 @@ function renderDetectedEntries() {
 
 function formatSignedTotal(sourceEntries) {
   const total = sourceEntries.reduce((sumTotal, entry) => {
-    return sumTotal + (entry.kind === "used" ? -entry.points : entry.points);
+    return sumTotal + (entry.kind === "earned" ? entry.points : -entry.points);
   }, 0);
   const sign = total > 0 ? "+" : "";
 
